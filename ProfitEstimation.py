@@ -61,6 +61,29 @@ def saveBasicTradingInfo(type):
     updateTransactionSheetAfterSell(symbol, amount, price, total_earning)
     updateBalanceSheetAfterSell(symbol, amount, total_earning)
 
+  elif (type=='trade'):
+    symbol_sell = input("Enter the sold cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    amount_sell = input("Enter the amount of "+ symbol_sell + " sold: ")
+    price_sell = input("Enter per unit price for "+ symbol_sell + "(in SGD): ")
+    total_earning_sell = float(amount_sell)*float(price_sell)
+    symbol_buy = input("Enter the bought cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    amount_buy = input("Enter the amount of "+ symbol_buy + " bought: ")
+    price_buy = input("Enter per unit price for "+ symbol_buy + "(in SGD): ")
+    total_earning_buy = float(amount_buy)*float(price_buy)
+    print("User traded ", amount_sell, " units of ", symbol_sell, " at unit price :" , price_sell, "SGD",\
+          "for ", amount_buy, " units of ", symbol_buy, " at unit price :", price_buy, "SGD")
+    print("Total spending is: ", total_earning_sell, "SGD in today's market value")
+    print("Total value after buy is: ", total_earning_buy, "SGD in today's market value")
+    coin_sell = (symbol_buy, amount_buy, price_buy, total_earning_buy)
+    coin_buy = (symbol_sell, amount_sell, price_sell, total_earning_sell)
+    updateTransactionSheetAfterTrade(coin_sell, coin_buy)
+    updateBalanceSheetAfterTrade(coin_sell, coin_buy)
+    # TODO
+    #   write trade information in the transaction sheet
+    #   do the maths for balance sheet updates
+    #   test it manually
+    #   
+
   return
 
 def updateTransactionSheetAfterBuy(symbol, amount, price, total_spending):
@@ -71,9 +94,18 @@ def updateTransactionSheetAfterBuy(symbol, amount, price, total_spending):
 
 def updateTransactionSheetAfterSell(symbol, amount, price, total_spending):
   with open(db_transaction_path, "a") as f:
-      data = "\n"+"Sell,"+symbol+","+amount+","+price+","+","+","+"," + str(total_spending)
+      data = "\n"+"Sell,"+price+","+","+","+"," +symbol+","+amount+ "," + str(total_spending)
       f.write(data)
   return
+
+def updateTransactionSheetAfterTrade(coin_sell, coin_buy):
+  symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
+  symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
+  with open(db_transaction_path, "a") as f:
+      data = "\n"+"Trade,"+symbol_buy+","+amount_buy+","+price_buy+","+symbol_sell+","+amount_sell+","+price_sell+","+ str(total_spending_sell)
+      f.write(data)
+  return
+
 
 def readStoredBalances():
   with open(db_balances_path, 'r') as f:
@@ -119,6 +151,12 @@ def updateBalanceSheetAfterSell(symbol_of_coin, amount_of_coin, total_fiat_earni
   storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings)
   return
 
+def updateBalanceSheetAfterTrade(coin_buy, coin_sell):
+  symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
+  symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
+  updateBalanceSheetAfterSell(symbol_sell, amount_sell, total_spending_sell)
+  updateBalanceSheetAfterBuy(symbol_buy, amount_buy, total_spending_sell)
+  return
 
 def saveCryptoTradingInfo(type):
   "symbol, total amount holding, average per unit price, fiat spending(based on average data)"
