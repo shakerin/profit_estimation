@@ -41,8 +41,19 @@ def setupEnv():
     f.write(db_balances_path_header)
 
 def saveBasicTradingInfo(type):
+  symbols, total_amounts, prices, fiat_spendings = readStoredBalances()
   if (type=='buy'):
     symbol = input("Enter the bought cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    if symbol in symbols:
+      index = symbols.index(symbol)
+      total_amount_stored = str(total_amounts[index])
+      price_stored = str(prices[index])
+      fiat_spending_stored = str(fiat_spendings[index])
+      print("Current balance of "+symbol+" = "+total_amount_stored)
+      print("Current price per unit of "+symbol+" = "+price_stored)
+      print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
+    else:
+      print("No existing balance available for " + symbol)
     amount = input("Enter the amount of "+ symbol + " bought: ")
     price = input("Enter per unit price for "+ symbol + "(in SGD): ")
     total_spending = float(amount) * float(price)
@@ -53,7 +64,20 @@ def saveBasicTradingInfo(type):
 
   elif (type=='sell'):
     symbol = input("Enter the sold cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    if symbol in symbols:
+      index = symbols.index(symbol)
+      total_amount_stored = str(total_amounts[index])
+      price_stored = str(prices[index])
+      fiat_spending_stored = str(fiat_spendings[index])
+      print("Current balance of "+symbol+" = "+total_amount_stored)
+      print("Current price per unit of "+symbol+" = "+price_stored)
+      print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
+    else:
+      print("No existing balance available for " + symbol)
     amount = input("Enter the amount of "+ symbol + " sold: ")
+    while (float(amount)>float(total_amount_stored)):
+      print("Please enter a valid amount that is lower or equal to exisitng balance of "+symbol)
+      amount = input("Enter the amount of "+ symbol + " sold: ")
     price = input("Enter per unit price for "+ symbol + "(in SGD): ")
     total_earning = float(amount)*float(price)
     print("User sold ", amount, " units of ", symbol, " at unit price :" , price, "SGD")
@@ -63,10 +87,34 @@ def saveBasicTradingInfo(type):
 
   elif (type=='trade'):
     symbol_sell = input("Enter the sold cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    if symbol_sell in symbols:
+      index = symbols.index(symbol_sell)
+      total_amount_stored = str(total_amounts[index])
+      price_stored = str(prices[index])
+      fiat_spending_stored = str(fiat_spendings[index])
+      print("Current balance of "+symbol_sell+" = "+total_amount_stored)
+      print("Current price per unit of "+symbol_sell+" = "+price_stored)
+      print("Current fiat value of "+symbol_sell+" = "+fiat_spending_stored)
+    else:
+      print("No existing balance available for " + symbol_sell)
     amount_sell = input("Enter the amount of "+ symbol_sell + " sold: ")
+    while (float(amount_sell)>float(total_amount_stored)):
+      print("Please enter a valid amount that is lower or equal to exisitng balance of "+symbol_sell)
+      print(amount_sell, total_amount_stored)
+      amount_sell = input("Enter the amount of "+ symbol_sell + " sold: ")
     price_sell = input("Enter per unit price for "+ symbol_sell + "(in SGD): ")
     total_earning_sell = float(amount_sell)*float(price_sell)
     symbol_buy = input("Enter the bought cryptocurrency symbol(as mentioned in coinmarketcap): ")
+    if symbol_buy in symbols:
+      index = symbols.index(symbol_buy)
+      total_amount_stored = str(total_amounts[index])
+      price_stored = str(prices[index])
+      fiat_spending_stored = str(fiat_spendings[index])
+      print("Current balance of "+symbol_buy+" = "+total_amount_stored)
+      print("Current price per unit of "+symbol_buy+" = "+price_stored)
+      print("Current fiat value of "+symbol_buy+" = "+fiat_spending_stored)
+    else:
+      print("No existing balance available for " + symbol_buy)
     amount_buy = input("Enter the amount of "+ symbol_buy + " bought: ")
     price_buy = input("Enter per unit price for "+ symbol_buy + "(in SGD): ")
     total_earning_buy = float(amount_buy)*float(price_buy)
@@ -78,12 +126,6 @@ def saveBasicTradingInfo(type):
     coin_buy = (symbol_sell, amount_sell, price_sell, total_earning_sell)
     updateTransactionSheetAfterTrade(coin_sell, coin_buy)
     updateBalanceSheetAfterTrade(coin_sell, coin_buy)
-    # TODO
-    #   write trade information in the transaction sheet
-    #   do the maths for balance sheet updates
-    #   test it manually
-    #   
-
   return
 
 def updateTransactionSheetAfterBuy(symbol, amount, price, total_spending):
@@ -147,7 +189,10 @@ def updateBalanceSheetAfterSell(symbol_of_coin, amount_of_coin, total_fiat_earni
   
   total_amounts[index_of_symbol] = total_amounts[index_of_symbol] - float(amount_of_coin)
   fiat_spendings[index_of_symbol] = fiat_spendings[index_of_symbol] - float(total_fiat_earning)
-  prices[index_of_symbol] = fiat_spendings[index_of_symbol]/total_amounts[index_of_symbol]
+  if (total_amounts[index_of_symbol]) != 0:
+    prices[index_of_symbol] = fiat_spendings[index_of_symbol]/total_amounts[index_of_symbol]
+  else:
+    prices[index_of_symbol] = 0.0
   storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings)
   return
 
