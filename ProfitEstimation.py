@@ -3,17 +3,14 @@
 ProfitEstimation.
 
 Usage:
-  ProfitEstimation save (basic|crypto) [--type=(buy|trade|sell)]
+  ProfitEstimation save [--type=(buy|trade|sell)]
   ProfitEstimation setup
 
 
 Options:
   setup           run this command only first time for setup
   save            indicates some info will be saved for future use
-  basic           indicates basic trading - where user buys
-                  or sells cryptocurrency with fiat
-  crypto          indicates crypto trading - where user buys
-                  or sells cryptocurrency with another cryptocurrency
+
   buy             user bought cryptocurrency with fiat money
   sell            user sold cryptocurrency for fiat money
   trade           user traded one cryptocurrency for another
@@ -33,7 +30,7 @@ db_transaction_header = "transaction_type,bought coin symbol,bought coin amount,
 
 db_balances_path        = "./balance_sheets.csv"
 db_balances_path_header = "symbol, total amount holding, average per unit price, "+ \
-                          "fiat spending(based on average data)"
+                          "fiat spending(based on average data), past profit"
 
 def setupEnv():
   with open(db_transaction_path, 'w') as f:
@@ -42,38 +39,48 @@ def setupEnv():
     f.write(db_balances_path_header)
 
 def collectBuyCoinInfo(coin_info):
-  symbols, total_amounts, prices, fiat_spendings = coin_info
+  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
   symbol = input("Enter the bought cryptocurrency symbol(as mentioned in coinmarketcap): ")
   if symbol in symbols:
       index = symbols.index(symbol)
       total_amount_stored = str(total_amounts[index])
       price_stored = str(prices[index])
       fiat_spending_stored = str(fiat_spendings[index])
+      past_profit = str(past_profits[index])
+      if past_profit.strip() == "":
+        past_profit = "0"
       print("Current balance of "+symbol+" = "+total_amount_stored)
       print("Current price per unit of "+symbol+" = "+price_stored)
       print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
+      print("Past profit from trading "+symbol+" = "+past_profit)
   else:
     print("No existing balance available for " + symbol)
+    past_profit = "0"
   amount = input("Enter the amount of "+ symbol + " bought: ")
   price = input("Enter per unit price for "+ symbol + "(in SGD): ")
   total_spending = float(amount) * float(price)
   print("User bought ", amount, " units of ", symbol, " at unit price :" , price, "SGD")
   print("Total spending is: ", total_spending, "SGD")
-  return (symbol, amount, price, total_spending)
+  return (symbol, amount, price, total_spending, past_profit)
 
 def collectSellCoinInfo(coin_info):
-  symbols, total_amounts, prices, fiat_spendings = coin_info
+  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
   symbol = input("Enter the sold cryptocurrency symbol(as mentioned in coinmarketcap): ")
   if symbol in symbols:
     index = symbols.index(symbol)
     total_amount_stored = str(total_amounts[index])
     price_stored = str(prices[index])
     fiat_spending_stored = str(fiat_spendings[index])
+    past_profit = str(past_profits[index])
+    if past_profit.strip() == "":
+        past_profit = "0"
     print("Current balance of "+symbol+" = "+total_amount_stored)
     print("Current price per unit of "+symbol+" = "+price_stored)
     print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
+    print("Past profit from trading "+symbol+" = "+past_profit)
   else:
     print("No existing balance available for " + symbol)
+    past_profit = "0"
   amount = input("Enter the amount of "+ symbol + " sold: ")
   while (float(amount)>float(total_amount_stored)):
     print("Please enter a valid amount that is lower or equal to exisitng balance of "+symbol)
@@ -82,11 +89,11 @@ def collectSellCoinInfo(coin_info):
   total_earning = float(amount)*float(price)
   print("User sold ", amount, " units of ", symbol, " at unit price :" , price, "SGD")
   print("Total earning is: ", total_earning, "SGD")
-  return (symbol, amount, price, total_earning)
+  return (symbol, amount, price, total_earning, past_profit)
 
 def collectTradeInfo(coin_info):
-  symbol_sell, amount_sell, price_sell, total_earning_sell = collectSellCoinInfo(coin_info)
-  symbol_buy, amount_buy, price_buy, total_spending_buy = collectBuyCoinInfo(coin_info)
+  symbol_sell, amount_sell, price_sell, total_earning_sell, past_profit_sell = collectSellCoinInfo(coin_info)
+  symbol_buy, amount_buy, price_buy, total_spending_buy, past_profit_buy = collectBuyCoinInfo(coin_info)
   print("User traded ", amount_sell, " units of ", symbol_sell, " at unit price :" , price_sell, "SGD",\
         "for ", amount_buy, " units of ", symbol_buy, " at unit price :", price_buy, "SGD")
   print("Total spending is: ", total_earning_sell, "SGD in today's market value")
@@ -98,12 +105,12 @@ def collectTradeInfo(coin_info):
 def saveBasicTradingInfo(type):
   coin_info = readStoredBalances()
   if (type=='buy'):
-    symbol, amount, price, total_spending = collectBuyCoinInfo(coin_info)
+    symbol, amount, price, total_spending, past_profit = collectBuyCoinInfo(coin_info)
     updateTransactionSheetAfterBuy(symbol, amount, price, total_spending)
     updateBalanceSheetAfterBuy(symbol, amount, total_spending)
 
   elif (type=='sell'):
-    symbol, amount, price, total_earning = collectSellCoinInfo(coin_info)
+    symbol, amount, price, total_earning, past_profit = collectSellCoinInfo(coin_info)
     updateTransactionSheetAfterSell(symbol, amount, price, total_earning)
     updateBalanceSheetAfterSell(symbol, amount, total_earning)
 
@@ -129,7 +136,8 @@ def updateTransactionSheetAfterTrade(coin_sell, coin_buy):
   symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
   symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
   with open(db_transaction_path, "a") as f:
-      data = "\n"+"Trade,"+symbol_buy+","+amount_buy+","+price_buy+","+symbol_sell+","+amount_sell+","+price_sell+","+ str(total_spending_sell)
+      data = "\n"+"Trade,"+symbol_buy+","+amount_buy+","+price_buy+","+symbol_sell+","+amount_sell+","+price_sell+"," \
+             + str(total_spending_sell)
       f.write(data)
   return
 
@@ -139,20 +147,24 @@ def readStoredBalances():
     lines = f.readlines()
   if len(lines) > 1:
     print("Number of entries: ", len(lines))
-  symbols, total_amounts, prices, fiat_spendings = [], [], [], []
+  symbols, total_amounts, prices, fiat_spendings, past_profits = [], [], [], [], []
   for line in lines[1:]:
-    symbol, total_amount, price, fiat_spending = line.split(",")
+    symbol, total_amount, price, fiat_spending, past_profit = line.split(",")
+    if past_profit.strip() == "":
+      past_profit = "0"
     total_amount = float(total_amount)
     price = float(price)
     fiat_spending = float(fiat_spending)
     symbols.append(symbol)
     total_amounts.append(total_amount)
     prices.append(price)
-    fiat_spendings.append(fiat_spending)  
-  return (symbols, total_amounts, prices, fiat_spendings)
+    fiat_spendings.append(fiat_spending)
+    past_profits.append(past_profit)
+
+  return (symbols, total_amounts, prices, fiat_spendings, past_profits)
 
 def updateBalanceSheetAfterBuy(symbol_of_coin, amount_of_coin, total_fiat_spending):
-  symbols, total_amounts, prices, fiat_spendings = readStoredBalances()
+  symbols, total_amounts, prices, fiat_spendings, past_profits = readStoredBalances()
   index_of_symbol = False
   if symbol_of_coin in symbols:
     index_of_symbol = symbols.index(symbol_of_coin)
@@ -164,40 +176,42 @@ def updateBalanceSheetAfterBuy(symbol_of_coin, amount_of_coin, total_fiat_spendi
     total_amounts.append(amount_of_coin)
     fiat_spendings.append(total_fiat_spending)
     prices.append(float(total_fiat_spending)/float(amount_of_coin))
-  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings)
+    past_profits.append("0")
+  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits)
   return
 
 
 def updateBalanceSheetAfterSell(symbol_of_coin, amount_of_coin, total_fiat_earning):
-  symbols, total_amounts, prices, fiat_spendings = readStoredBalances()
+  symbols, total_amounts, prices, fiat_spendings, past_profits = readStoredBalances()
   index_of_symbol = symbols.index(symbol_of_coin)
   
   total_amounts[index_of_symbol] = total_amounts[index_of_symbol] - float(amount_of_coin)
   fiat_spendings[index_of_symbol] = fiat_spendings[index_of_symbol] - float(total_fiat_earning)
+  if total_amounts[index_of_symbol] == 0:
+    past_profits[index_of_symbol] = (float(past_profits[index_of_symbol]) + -1.0*fiat_spendings[index_of_symbol])
+    fiat_spendings[index_of_symbol] = 0
   if (total_amounts[index_of_symbol]) != 0:
     prices[index_of_symbol] = fiat_spendings[index_of_symbol]/total_amounts[index_of_symbol]
   else:
     prices[index_of_symbol] = 0.0
-  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings)
+  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits)
   return
 
-def updateBalanceSheetAfterTrade(coin_buy, coin_sell):
+def updateBalanceSheetAfterTrade(coin_sell, coin_buy):
   symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
   symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
   updateBalanceSheetAfterSell(symbol_sell, amount_sell, total_spending_sell)
   updateBalanceSheetAfterBuy(symbol_buy, amount_buy, total_spending_sell)
   return
 
-def saveCryptoTradingInfo(type):
-  "symbol, total amount holding, average per unit price, fiat spending(based on average data)"
-  pass
 
-def storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings):
+def storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits):
   data = db_balances_path_header
   with open(db_balances_path, 'w') as f:
     for i, symbol in enumerate(symbols):
       data += "\n"+symbol+","+str(total_amounts[i])+","+ \
-              str(prices[i])+","+str(fiat_spendings[i])
+              str(prices[i])+","+str(fiat_spendings[i])+","+ \
+              str(past_profits[i]).strip()
     f.write(data)
   return
 
@@ -205,19 +219,14 @@ def storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings):
 
 def Main():
   args = docopt(__doc__, version='ProfitEstimation 1.0')
-  print(args)
   setup = args["setup"]
   save = args["save"]
-  basic = args["basic"]
-  crypto = args["crypto"]
   type = args["--type"] if args["--type"] else "trade"
   if setup:
     setupEnv()
   elif save:
-    if basic:
-      saveBasicTradingInfo(type)
-    elif crypto:
-      saveCryptoTradingInfo(type)   
+    saveBasicTradingInfo(type)
+ 
   return
 
 if __name__=="__main__":
