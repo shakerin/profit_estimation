@@ -4,12 +4,14 @@ ProfitEstimation.
 
 Usage:
   ProfitEstimation save [--type=(buy|trade|sell)]
+  ProfitEstimation balance <symbol>
   ProfitEstimation setup
 
 
 Options:
   setup           run this command only first time for setup
   save            indicates some info will be saved for future use
+  balance         check the balance of a particular coin
 
   buy             user bought cryptocurrency with fiat money
   sell            user sold cryptocurrency for fiat money
@@ -49,10 +51,10 @@ def collectBuyCoinInfo(coin_info):
       past_profit = str(past_profits[index])
       if past_profit.strip() == "":
         past_profit = "0"
-      print("Current balance of "+symbol+" = "+total_amount_stored)
+      print("Current balance of        "+symbol+" = "+total_amount_stored)
       print("Current price per unit of "+symbol+" = "+price_stored)
-      print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
-      print("Past profit from trading "+symbol+" = "+past_profit)
+      print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
+      print("Past profit from trading  "+symbol+" = "+past_profit)
   else:
     print("No existing balance available for " + symbol)
     past_profit = "0"
@@ -74,10 +76,10 @@ def collectSellCoinInfo(coin_info):
     past_profit = str(past_profits[index])
     if past_profit.strip() == "":
         past_profit = "0"
-    print("Current balance of "+symbol+" = "+total_amount_stored)
+    print("Current balance of        "+symbol+" = "+total_amount_stored)
     print("Current price per unit of "+symbol+" = "+price_stored)
-    print("Current fiat value of "+symbol+" = "+fiat_spending_stored)
-    print("Past profit from trading "+symbol+" = "+past_profit)
+    print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
+    print("Past profit from trading  "+symbol+" = "+past_profit)
   else:
     print("No existing balance available for " + symbol)
     past_profit = "0"
@@ -145,7 +147,7 @@ def updateTransactionSheetAfterTrade(coin_sell, coin_buy):
 def readStoredBalances():
   with open(db_balances_path, 'r') as f:
     lines = f.readlines()
-  if len(lines) > 1:
+  if len(lines) <= 1:
     print("Number of entries: ", len(lines))
   symbols, total_amounts, prices, fiat_spendings, past_profits = [], [], [], [], []
   for line in lines[1:]:
@@ -216,17 +218,39 @@ def storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_pro
   return
 
 
+def checkBalanceOfCoin(symbol):
+  coin_info = readStoredBalances()
+  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
+  if symbol in symbols:
+    index = symbols.index(symbol)
+    total_amount_stored = str(total_amounts[index])
+    price_stored = str(prices[index])
+    fiat_spending_stored = str(fiat_spendings[index])
+    past_profit = str(past_profits[index]).strip()
+    if past_profit == "":
+        past_profit = "0"
+    print("Current balance of        "+symbol+" = "+total_amount_stored)
+    print("Current price per unit of "+symbol+" = "+price_stored)
+    print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
+    print("Past profit from trading  "+symbol+" = "+past_profit)
+  else:
+    print("No existing balance available for " + symbol)
+
 
 def Main():
   args = docopt(__doc__, version='ProfitEstimation 1.0')
   setup = args["setup"]
   save = args["save"]
+  balance = args["balance"]
   type = args["--type"] if args["--type"] else "trade"
   if setup:
     setupEnv()
   elif save:
     saveBasicTradingInfo(type)
- 
+  elif balance:
+    symbol = args["<symbol>"]
+    checkBalanceOfCoin(symbol)
+
   return
 
 if __name__=="__main__":
