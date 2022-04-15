@@ -19,222 +19,14 @@ Options:
 
 """
 
-import json
 from docopt import docopt
 from JsonExtract import *
 from common_func import *
-from datetime import date
+from Globals import *
+from SaveTradingInfo import saveTradingInfo
+from CheckBalance import checkBalance
+from SetupEnv import setupEnv
 
-db_transaction_path   = "./transaction_sheet.csv"
-db_transaction_header = "transaction_type,bought coin symbol,bought coin amount," + \
-                        "bought coin unit price,sold coin symbol,sold coin amount," + \
-                        "sold coin unit price,total spending in fiat"
-
-db_balances_path        = "./balance_sheets.csv"
-db_balances_path_header = "symbol, total amount holding, average per unit price, "+ \
-                          "fiat spending(based on average data), past profit"
-
-def setupEnv():
-  with open(db_transaction_path, 'w') as f:
-    f.write(db_transaction_header)
-  with open(db_balances_path, 'w') as f:
-    f.write(db_balances_path_header)
-
-def collectBuyCoinInfo(coin_info):
-  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
-  symbol = input("Enter the bought cryptocurrency symbol(as mentioned in coinmarketcap): ")
-  if symbol in symbols:
-      index = symbols.index(symbol)
-      total_amount_stored = str(total_amounts[index])
-      price_stored = str(prices[index])
-      fiat_spending_stored = str(fiat_spendings[index])
-      past_profit = str(past_profits[index])
-      if past_profit.strip() == "":
-        past_profit = "0"
-      print("Current balance of        "+symbol+" = "+total_amount_stored)
-      print("Current price per unit of "+symbol+" = "+price_stored)
-      print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
-      print("Past profit from trading  "+symbol+" = "+past_profit)
-  else:
-    print("No existing balance available for " + symbol)
-    past_profit = "0"
-  amount = input("Enter the amount of "+ symbol + " bought: ")
-  price = input("Enter per unit price for "+ symbol + "(in SGD): ")
-  total_spending = float(amount) * float(price)
-  print("User bought ", amount, " units of ", symbol, " at unit price :" , price, "SGD")
-  print("Total spending is: ", total_spending, "SGD")
-  return (symbol, amount, price, total_spending, past_profit)
-
-def collectSellCoinInfo(coin_info):
-  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
-  symbol = input("Enter the sold cryptocurrency symbol(as mentioned in coinmarketcap): ")
-  if symbol in symbols:
-    index = symbols.index(symbol)
-    total_amount_stored = str(total_amounts[index])
-    price_stored = str(prices[index])
-    fiat_spending_stored = str(fiat_spendings[index])
-    past_profit = str(past_profits[index])
-    if past_profit.strip() == "":
-        past_profit = "0"
-    print("Current balance of        "+symbol+" = "+total_amount_stored)
-    print("Current price per unit of "+symbol+" = "+price_stored)
-    print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
-    print("Past profit from trading  "+symbol+" = "+past_profit)
-  else:
-    print("No existing balance available for " + symbol)
-    past_profit = "0"
-  amount = input("Enter the amount of "+ symbol + " sold: ")
-  while (float(amount)>float(total_amount_stored)):
-    print("Please enter a valid amount that is lower or equal to exisitng balance of "+symbol)
-    amount = input("Enter the amount of "+ symbol + " sold: ")
-  price = input("Enter per unit price for "+ symbol + "(in SGD): ")
-  total_earning = float(amount)*float(price)
-  print("User sold ", amount, " units of ", symbol, " at unit price :" , price, "SGD")
-  print("Total earning is: ", total_earning, "SGD")
-  return (symbol, amount, price, total_earning, past_profit)
-
-def collectTradeInfo(coin_info):
-  symbol_sell, amount_sell, price_sell, total_earning_sell, past_profit_sell = collectSellCoinInfo(coin_info)
-  symbol_buy, amount_buy, price_buy, total_spending_buy, past_profit_buy = collectBuyCoinInfo(coin_info)
-  print("User traded ", amount_sell, " units of ", symbol_sell, " at unit price :" , price_sell, "SGD",\
-        "for ", amount_buy, " units of ", symbol_buy, " at unit price :", price_buy, "SGD")
-  print("Total spending is: ", total_earning_sell, "SGD in today's market value")
-  print("Total value after buy is: ", total_spending_buy, "SGD in today's market value")
-  sell_coin = (symbol_sell, amount_sell, price_sell, total_earning_sell)
-  buy_coin = (symbol_buy, amount_buy, price_buy, total_spending_buy)
-  return (sell_coin, buy_coin)
-
-def saveBasicTradingInfo(type):
-  coin_info = readStoredBalances()
-  if (type=='buy'):
-    symbol, amount, price, total_spending, past_profit = collectBuyCoinInfo(coin_info)
-    updateTransactionSheetAfterBuy(symbol, amount, price, total_spending)
-    updateBalanceSheetAfterBuy(symbol, amount, total_spending)
-
-  elif (type=='sell'):
-    symbol, amount, price, total_earning, past_profit = collectSellCoinInfo(coin_info)
-    updateTransactionSheetAfterSell(symbol, amount, price, total_earning)
-    updateBalanceSheetAfterSell(symbol, amount, total_earning)
-
-  elif (type=='trade'):
-    coin_sell, coin_buy = collectTradeInfo(coin_info)
-    updateTransactionSheetAfterTrade(coin_sell, coin_buy)
-    updateBalanceSheetAfterTrade(coin_sell, coin_buy)
-  return
-
-def updateTransactionSheetAfterBuy(symbol, amount, price, total_spending):
-  with open(db_transaction_path, "a") as f:
-      data = "\n"+"Buy,"+symbol+","+amount+","+price+","+","+","+"," + str(total_spending)
-      f.write(data)
-  return
-
-def updateTransactionSheetAfterSell(symbol, amount, price, total_spending):
-  with open(db_transaction_path, "a") as f:
-      data = "\n"+"Sell,"+price+","+","+","+"," +symbol+","+amount+ "," + str(total_spending)
-      f.write(data)
-  return
-
-def updateTransactionSheetAfterTrade(coin_sell, coin_buy):
-  symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
-  symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
-  with open(db_transaction_path, "a") as f:
-      data = "\n"+"Trade,"+symbol_buy+","+amount_buy+","+price_buy+","+symbol_sell+","+amount_sell+","+price_sell+"," \
-             + str(total_spending_sell)
-      f.write(data)
-  return
-
-
-def readStoredBalances():
-  with open(db_balances_path, 'r') as f:
-    lines = f.readlines()
-  if len(lines) <= 1:
-    print("Number of entries: ", len(lines))
-  symbols, total_amounts, prices, fiat_spendings, past_profits = [], [], [], [], []
-  for line in lines[1:]:
-    symbol, total_amount, price, fiat_spending, past_profit = line.split(",")
-    if past_profit.strip() == "":
-      past_profit = "0"
-    total_amount = float(total_amount)
-    price = float(price)
-    fiat_spending = float(fiat_spending)
-    symbols.append(symbol)
-    total_amounts.append(total_amount)
-    prices.append(price)
-    fiat_spendings.append(fiat_spending)
-    past_profits.append(past_profit)
-
-  return (symbols, total_amounts, prices, fiat_spendings, past_profits)
-
-def updateBalanceSheetAfterBuy(symbol_of_coin, amount_of_coin, total_fiat_spending):
-  symbols, total_amounts, prices, fiat_spendings, past_profits = readStoredBalances()
-  index_of_symbol = False
-  if symbol_of_coin in symbols:
-    index_of_symbol = symbols.index(symbol_of_coin)
-    total_amounts[index_of_symbol] = total_amounts[index_of_symbol] + float(amount_of_coin)
-    fiat_spendings[index_of_symbol] = fiat_spendings[index_of_symbol] + float(total_fiat_spending)
-    prices[index_of_symbol] = fiat_spendings[index_of_symbol]/total_amounts[index_of_symbol]
-  else:
-    symbols.append(symbol_of_coin)
-    total_amounts.append(amount_of_coin)
-    fiat_spendings.append(total_fiat_spending)
-    prices.append(float(total_fiat_spending)/float(amount_of_coin))
-    past_profits.append("0")
-  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits)
-  return
-
-
-def updateBalanceSheetAfterSell(symbol_of_coin, amount_of_coin, total_fiat_earning):
-  symbols, total_amounts, prices, fiat_spendings, past_profits = readStoredBalances()
-  index_of_symbol = symbols.index(symbol_of_coin)
-  
-  total_amounts[index_of_symbol] = total_amounts[index_of_symbol] - float(amount_of_coin)
-  fiat_spendings[index_of_symbol] = fiat_spendings[index_of_symbol] - float(total_fiat_earning)
-  if total_amounts[index_of_symbol] == 0:
-    past_profits[index_of_symbol] = (float(past_profits[index_of_symbol]) + -1.0*fiat_spendings[index_of_symbol])
-    fiat_spendings[index_of_symbol] = 0
-  if (total_amounts[index_of_symbol]) != 0:
-    prices[index_of_symbol] = fiat_spendings[index_of_symbol]/total_amounts[index_of_symbol]
-  else:
-    prices[index_of_symbol] = 0.0
-  storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits)
-  return
-
-def updateBalanceSheetAfterTrade(coin_sell, coin_buy):
-  symbol_sell, amount_sell, price_sell, total_spending_sell = coin_sell
-  symbol_buy, amount_buy, price_buy, total_spending_buy = coin_buy
-  updateBalanceSheetAfterSell(symbol_sell, amount_sell, total_spending_sell)
-  updateBalanceSheetAfterBuy(symbol_buy, amount_buy, total_spending_sell)
-  return
-
-
-def storeNewBalanceData(symbols, total_amounts, prices, fiat_spendings, past_profits):
-  data = db_balances_path_header
-  with open(db_balances_path, 'w') as f:
-    for i, symbol in enumerate(symbols):
-      data += "\n"+symbol+","+str(total_amounts[i])+","+ \
-              str(prices[i])+","+str(fiat_spendings[i])+","+ \
-              str(past_profits[i]).strip()
-    f.write(data)
-  return
-
-
-def checkBalanceOfCoin(symbol):
-  coin_info = readStoredBalances()
-  symbols, total_amounts, prices, fiat_spendings, past_profits = coin_info
-  if symbol in symbols:
-    index = symbols.index(symbol)
-    total_amount_stored = str(total_amounts[index])
-    price_stored = str(prices[index])
-    fiat_spending_stored = str(fiat_spendings[index])
-    past_profit = str(past_profits[index]).strip()
-    if past_profit == "":
-        past_profit = "0"
-    print("Current balance of        "+symbol+" = "+total_amount_stored)
-    print("Current price per unit of "+symbol+" = "+price_stored)
-    print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
-    print("Past profit from trading  "+symbol+" = "+past_profit)
-  else:
-    print("No existing balance available for " + symbol)
 
 
 def Main():
@@ -246,10 +38,10 @@ def Main():
   if setup:
     setupEnv()
   elif save:
-    saveBasicTradingInfo(type)
+    saveTradingInfo(type)
   elif balance:
     symbol = args["<symbol>"]
-    checkBalanceOfCoin(symbol)
+    checkBalance(symbol)
 
   return
 
