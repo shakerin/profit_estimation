@@ -1,4 +1,5 @@
 from ReadStoredBalances import readStoredBalances
+from Globals import *
 
 def checkBalance(symbol):
   coin_info = readStoredBalances()
@@ -11,9 +12,9 @@ def checkBalance(symbol):
     past_profit = str(past_profits[index]).strip()
     if past_profit == "":
         past_profit = "0"
-    print("Current balance of        "+symbol+" = "+total_amount_stored)
-    print("Current price per unit of "+symbol+" = "+price_stored)
-    print("Current fiat value of     "+symbol+" = "+fiat_spending_stored)
-    print("Past profit from trading  "+symbol+" = "+past_profit)
+    print("Balance           = "+GREEN_BOLD+total_amount_stored+BLACK)
+    print("PPU               = "+price_stored)
+    print("Fiat Value        = "+GREEN_BOLD+fiat_spending_stored+BLACK)
+    print("Previous Balance  = "+past_profit)
   else:
-    print("No existing balance available for " + symbol)
+    print("No existing balance available for " + BLUE+symbol+BLACK)
