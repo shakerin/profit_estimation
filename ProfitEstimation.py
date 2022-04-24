@@ -5,6 +5,7 @@ ProfitEstimation.
 Usage:
   ProfitEstimation save [--type=(buy|trade|sell)]
   ProfitEstimation balance <symbol>
+  ProfitEstimation profit <symbol>
   ProfitEstimation setup
 
 
@@ -25,6 +26,7 @@ from common_func import *
 from Globals import *
 from SaveTradingInfo import saveTradingInfo
 from CheckBalance import checkBalance
+from CheckRealtimeProfit import checkRealtimeProfitLoss
 from SetupEnv import setupEnv
 
 
@@ -34,6 +36,7 @@ def Main():
   setup = args["setup"]
   save = args["save"]
   balance = args["balance"]
+  profit = args["profit"]
   type = args["--type"] if args["--type"] else "trade"
   if setup:
     setupEnv()
@@ -42,7 +45,9 @@ def Main():
   elif balance:
     symbol = args["<symbol>"]
     checkBalance(symbol)
-
+  elif profit:
+    symbol = args["<symbol>"]
+    checkRealtimeProfitLoss(symbol)
   return
 
 if __name__=="__main__":

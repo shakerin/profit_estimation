@@ -18,3 +18,4 @@ def checkBalance(symbol):
     print("Previous Balance  = "+past_profit)
   else:
     print("No existing balance available for " + BLUE+symbol+BLACK)
+  return (total_amount_stored, price_stored, fiat_spending_stored, past_profit)
