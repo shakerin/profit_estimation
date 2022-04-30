@@ -4,8 +4,8 @@ ProfitEstimation.
 
 Usage:
   ProfitEstimation save [--type=(buy|trade|sell)]
-  ProfitEstimation balance <symbol>
-  ProfitEstimation profit <symbol>
+  ProfitEstimation balance [--symbol=<symbol>]
+  ProfitEstimation profit [--symbol=<symbol>]
   ProfitEstimation setup
 
 
@@ -20,13 +20,14 @@ Options:
 
 """
 
+from tabnanny import check
 from docopt import docopt
 from JsonExtract import *
 from common_func import *
 from Globals import *
 from SaveTradingInfo import saveTradingInfo
-from CheckBalance import checkBalance
-from CheckRealtimeProfit import checkRealtimeProfitLoss
+from CheckBalance import checkBalance, checkAllBalance
+from CheckRealtimeProfit import checkRealtimeProfitLoss, checkAllRealtimeProfitLoss
 from SetupEnv import setupEnv
 
 
@@ -43,11 +44,17 @@ def Main():
   elif save:
     saveTradingInfo(type)
   elif balance:
-    symbol = args["<symbol>"]
-    checkBalance(symbol)
+    symbol = args["--symbol"]
+    if symbol:
+      checkBalance(symbol)
+    else:
+      checkAllBalance()
   elif profit:
-    symbol = args["<symbol>"]
-    checkRealtimeProfitLoss(symbol)
+    symbol = args["--symbol"]
+    if symbol:
+      checkRealtimeProfitLoss(symbol)
+    else:
+      checkAllRealtimeProfitLoss()
   return
 
 if __name__=="__main__":
